@@ -1161,6 +1161,7 @@ message V1LayerParameter {
   repeated NetStateRule exclude = 33;
   enum LayerType {
     NONE = 0;
+    ALASKA_LOSS = 41;
     ABSVAL = 35;
     ACCURACY = 1;
     ARGMAX = 30;
