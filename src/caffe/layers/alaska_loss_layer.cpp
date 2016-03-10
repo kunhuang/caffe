@@ -10,6 +10,12 @@ namespace caffe {
 template <typename Dtype>
 void AlaskaLossLayer<Dtype>::LayerSetUp(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+  
+  // bottom[0]: value from FCN, N*C(num of labels)*W*H
+  // bottom[1]: saliency_map list, 1*C(num of labels)*W*H
+  // bottom[2]: labels, 1*C*1*1
+  // top[0]: loss
+  
   LossLayer<Dtype>::LayerSetUp(bottom, top);
   LayerParameter softmax_param(this->layer_param_);
   softmax_param.set_type("Softmax");
@@ -43,6 +49,7 @@ void AlaskaLossLayer<Dtype>::Reshape(
   softmax_axis_ =
       bottom[0]->CanonicalAxisIndex(this->layer_param_.softmax_param().axis());
   outer_num_ = bottom[0]->count(0, softmax_axis_);
+  label_num_ = bottom[0]->count(softmax_axis_, softmax_axis_);
   inner_num_ = bottom[0]->count(softmax_axis_ + 1);
   CHECK_EQ(outer_num_ * inner_num_, bottom[1]->count())
       << "Number of labels must match number of predictions; "
@@ -91,23 +98,29 @@ void AlaskaLossLayer<Dtype>::Forward_cpu(
   // The forward pass computes the softmax prob values.
   softmax_layer_->Forward(softmax_bottom_vec_, softmax_top_vec_);
   const Dtype* prob_data = prob_.cpu_data();
-  const Dtype* label = bottom[1]->cpu_data();
+  const Dtype* saliency_data = bottom[1]->cpu_data();
   int dim = prob_.count() / outer_num_;
   int count = 0;
   Dtype loss = 0;
   for (int i = 0; i < outer_num_; ++i) {
-    for (int j = 0; j < inner_num_; j++) {
-      const int label_value = static_cast<int>(label[i * inner_num_ + j]);
-      if (has_ignore_label_ && label_value == ignore_label_) {
-        continue;
+    for (int label_value = 0; label_value < label_num_; ++label_value)
+    {
+      for (int j = 0; j < inner_num_; j++) {
+        // const int label_value = static_cast<int>(label[i * inner_num_ + j]);
+        // if (has_ignore_label_ && label_value == ignore_label_) {
+        //   continue;
+        // }
+        // DCHECK_GE(label_value, 0);
+        // DCHECK_LT(label_value, prob_.shape(softmax_axis_));
+        loss -= saliency_data[label_value*inner_num_ + j] * log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
+                                                                         Dtype(FLT_MIN)));
+        ++count;
       }
-      DCHECK_GE(label_value, 0);
-      DCHECK_LT(label_value, prob_.shape(softmax_axis_));
-      loss -= log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
-                           Dtype(FLT_MIN)));
-      ++count;
     }
   }
+  // TODO
+  // image label loss
+
   top[0]->mutable_cpu_data()[0] = loss / get_normalizer(normalization_, count);
   if (top.size() == 2) {
     top[1]->ShareData(prob_);
@@ -117,34 +130,35 @@ void AlaskaLossLayer<Dtype>::Forward_cpu(
 template <typename Dtype>
 void AlaskaLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  if (propagate_down[1]) {
-    LOG(FATAL) << this->type()
-               << " Layer cannot backpropagate to label inputs.";
-  }
-  if (propagate_down[0]) {
-    Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
-    const Dtype* prob_data = prob_.cpu_data();
-    caffe_copy(prob_.count(), prob_data, bottom_diff);
-    const Dtype* label = bottom[1]->cpu_data();
-    int dim = prob_.count() / outer_num_;
-    int count = 0;
-    for (int i = 0; i < outer_num_; ++i) {
-      for (int j = 0; j < inner_num_; ++j) {
-        const int label_value = static_cast<int>(label[i * inner_num_ + j]);
-        if (has_ignore_label_ && label_value == ignore_label_) {
-          for (int c = 0; c < bottom[0]->shape(softmax_axis_); ++c) {
-            bottom_diff[i * dim + c * inner_num_ + j] = 0;
-          }
-        } else {
-          bottom_diff[i * dim + label_value * inner_num_ + j] -= 1;
-          ++count;
-        }
-      }
-    }
-    // Scale gradient
-    Dtype loss_weight = top[0]->cpu_diff()[0] /
-                        get_normalizer(normalization_, count);
-    caffe_scal(prob_.count(), loss_weight, bottom_diff);
+  NOT_IMPLEMENTED;
+  // if (propagate_down[1]) {
+  //   LOG(FATAL) << this->type()
+  //              << " Layer cannot backpropagate to label inputs.";
+  // }
+  // if (propagate_down[0]) {
+  //   Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
+  //   const Dtype* prob_data = prob_.cpu_data();
+  //   caffe_copy(prob_.count(), prob_data, bottom_diff);
+  //   const Dtype* label = bottom[1]->cpu_data();
+  //   int dim = prob_.count() / outer_num_;
+  //   int count = 0;
+  //   for (int i = 0; i < outer_num_; ++i) {
+  //     for (int j = 0; j < inner_num_; ++j) {
+  //       const int label_value = static_cast<int>(label[i * inner_num_ + j]);
+  //       if (has_ignore_label_ && label_value == ignore_label_) {
+  //         for (int c = 0; c < bottom[0]->shape(softmax_axis_); ++c) {
+  //           bottom_diff[i * dim + c * inner_num_ + j] = 0;
+  //         }
+  //       } else {
+  //         bottom_diff[i * dim + label_value * inner_num_ + j] -= 1;
+  //         ++count;
+  //       }
+  //     }
+  //   }
+  //   // Scale gradient
+  //   Dtype loss_weight = top[0]->cpu_diff()[0] /
+  //                       get_normalizer(normalization_, count);
+  //   caffe_scal(prob_.count(), loss_weight, bottom_diff);
   }
 }
 
