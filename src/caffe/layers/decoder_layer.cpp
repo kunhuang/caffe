@@ -35,11 +35,10 @@ void DecoderLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       label >>= 1;
     }
 
-    debug
     if(1)
     {
        std::cout << "qDebug: label" << bottom_label[i] << std::endl;
-       std::cout << "qDebug: bottom_data[i]" << top_data[i*label_size:(i+1)*label_size] << std::endl;
+       std::cout << "qDebug: top_data" << top_data[i*label_size] << std::endl;
     }
 
   }

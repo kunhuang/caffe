@@ -160,10 +160,9 @@ void AlaskaLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   //                       get_normalizer(normalization_, count);
   //   caffe_scal(prob_.count(), loss_weight, bottom_diff);
   }
-}
 
 #ifdef CPU_ONLY
-STUB_GPU(SoftmaxWithLossLayer);
+STUB_GPU(AlaskaLossLayer);
 #endif
 
 INSTANTIATE_CLASS(AlaskaLossLayer);
