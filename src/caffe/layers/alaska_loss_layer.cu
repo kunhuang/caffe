@@ -30,7 +30,7 @@ __global__ void AlaskaLossForwardGPU(const int nthreads,
 }
 
 template <typename Dtype>
-void AlaskaLayer<Dtype>::Forward_gpu(
+void AlaskaLossLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   NOT_IMPLEMENTED;
   // softmax_layer_->Forward(softmax_bottom_vec_, softmax_top_vec_);
@@ -91,7 +91,7 @@ __global__ void AlaskaLossBackwardGPU(const int nthreads, const Dtype* top,
 }
 
 template <typename Dtype>
-void AlaskaLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+void AlaskaLossLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   NOT_IMPLEMENTED;
   // if (propagate_down[1]) {
