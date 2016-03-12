@@ -17,7 +17,7 @@ template <typename Dtype>
 void DecoderLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, 
                                   const vector<Blob<Dtype>*>& top) {
   int batch_size = bottom[0]->count(0, 1);
-  top[0]->Reshape(batch_size,label_size);  // (b,l,1,1) -> (b,l)
+  top[0]->Reshape(batch_size,label_size,1,1);
 }
 
 template <typename Dtype>
