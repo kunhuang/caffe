@@ -1,5 +1,4 @@
 #include <vector>
-
 #include "caffe/layers/sigmoid_cross_entropy_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
@@ -38,9 +37,11 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
   Dtype loss = 0;
+  const float alpha = 0.07; //new
   for (int i = 0; i < count; ++i) {
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+    loss -= alpha * (input_data[i] * (target[i] - (input_data[i] >= 0)) -
+        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))) ) + 
+	((alpha - 1) * target[i] * (log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))) - input_data[i]*(input_data[i]<=0)));
   }
   top[0]->mutable_cpu_data()[0] = loss / num;
 }
@@ -61,9 +62,23 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
     const Dtype* target = bottom[1]->cpu_data();
     Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
     caffe_sub(count, sigmoid_output_data, target, bottom_diff);
+    // New
+    const Dtype alpha = 0.07;
+    caffe_scal(count, alpha, bottom_diff);
+    Dtype* ones = (Dtype*)malloc(sizeof(Dtype)*count);
+    Dtype* mid = (Dtype*)malloc(sizeof(Dtype)*count);
+    for(int i = 0; i < count; i++)
+        ones[i] = 1.0; 
+    caffe_sub(count, ones, sigmoid_output_data, mid);
+    free(ones);
+    caffe_mul(count, target, mid, mid);
+    caffe_scal(count, alpha - 1, mid);
+    caffe_add(count, mid, bottom_diff, bottom_diff);
+    free(mid);
     // Scale down gradient
     const Dtype loss_weight = top[0]->cpu_diff()[0];
     caffe_scal(count, loss_weight / num, bottom_diff);
+    //LOG(INFO) << "SCEL CPU backward"; //debug
   }
 }
 

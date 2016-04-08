@@ -56,11 +56,11 @@ void MultiLabelAccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bot
     int label = static_cast<int>(bottom_label[ind]);
       
     //debug
-    if(1)
-    {
-        std::cout << "kDebug: label" << label << std::endl;
-        std::cout << "kDebug: bottom_data[ind]" << bottom_data[ind] << std::endl;
-    }
+    //if(1)
+    //{
+    //    std::cout << "kDebug: label" << label << std::endl;
+    //    std::cout << "kDebug: bottom_data[ind]" << bottom_data[ind] << std::endl;
+    //}
     
     if (label > 0) {
     // Update Positive accuracy and count
