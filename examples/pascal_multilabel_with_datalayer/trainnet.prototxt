@@ -6,7 +6,7 @@ layer {
   python_param {
     module: "pascal_multilabel_datalayers"
     layer: "PascalMultilabelDataLayerSync"
-    param_str: "{\'pascal_root\': \'../../../caffe/data/VOC/VOCdevkit/VOC2012\', \'im_shape\': [227, 227], \'split\': \'train\', \'batch_size\': 128}"
+    param_str: "{\'pascal_root\': \'../../../caffe/data/VOC/VOCdevkit/VOC2012\', \'im_shape\': [227, 227], \'split\': \'train\', \'batch_size\': 12}"
   }
 }
 layer {

@@ -16,6 +16,7 @@ from PIL import Image
 
 from tools import SimpleTransformer
 
+import pdb
 
 class PascalMultilabelDataLayerSync(caffe.Layer):
 
@@ -25,7 +26,7 @@ class PascalMultilabelDataLayerSync(caffe.Layer):
     """
 
     def setup(self, bottom, top):
-
+        pdb.set_trace()
         self.top_names = ['data', 'label']
 
         # === Read input parameters ===

@@ -61,6 +61,9 @@ def assign_proto(proto, name, val):
     lists; e.g., `my_repeated_int_field=3` is converted to
     `my_repeated_int_field=[3]`."""
 
+    import pdb
+    #if name=='stride':
+    #    pdb.set_trace()
     is_repeated_field = hasattr(getattr(proto, name), 'extend')
     if is_repeated_field and not isinstance(val, list):
         val = [val]

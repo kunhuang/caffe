@@ -55,8 +55,8 @@ class AlaskaLossLayer(caffe.Layer):
         '''
         Args:
             bottom[0]:S, (float[n*num_L*w*h]), 0~1
-            bottom[1]:alpha, (float[n*num_L*w*h]), 0~1
-            bottom[2]:L, (bool[n*num_L*1*1]), including the background, in L[:, -1]
+            bottom[1]:L, (bool[n*num_L*1*1]), including the background, in L[:, -1]
+            bottom[2]:alpha, (float[n*num_L*w*h]), 0~1
         '''
         # check input pair
 
@@ -78,7 +78,7 @@ class AlaskaLossLayer(caffe.Layer):
         top[0].reshape(1)
 
     def forward(self, bottom, top):
-
+        pdb.set_trace()
         max_L = np.max(bottom[0].data, axis=[2,3])
 
 
@@ -88,6 +88,7 @@ class AlaskaLossLayer(caffe.Layer):
         top[0].data[...] = np.sum(self.diff**2) / bottom[0].num / 2.
 
     def backward(self, top, propagate_down, bottom):
+        pdb.set_trace()
         for i in range(2):
             if not propagate_down[i]:
                 continue
