@@ -1,6 +1,6 @@
 import caffe
 import numpy as np
-
+import pdb
 
 class AlaskaLossLayer(caffe.Layer):
     """
@@ -55,12 +55,13 @@ class AlaskaLossLayer(caffe.Layer):
         '''
         Args:
             bottom[0]:S, (float[n*num_L*w*h]), 0~1
-            bottom[1]:L, (bool[n*num_L*1*1]), including the background, in L[:, -1]
-            bottom[2]:alpha, (float[n*num_L*w*h]), 0~1
+            bottom[1]:alpha, (float[n*num_L*w*h]), 0~1
+            bottom[2]:L, (bool[n*(num_L-1)*1*1]), except the background
         '''
         # check input pair
-
-        self.n, self.num_L, self.w, self.h = self.bottom[0].data.shape
+        pdb.set_trace()
+        
+        self.n, self.num_L, self.w, self.h = bottom[0].data.shape
 
         if len(bottom) != 3:
             raise Exception("bottom[0]:S, bottom[1]:alpha, bottom[2]:L")
@@ -69,6 +70,7 @@ class AlaskaLossLayer(caffe.Layer):
 
 
     def reshape(self, bottom, top):
+        pdb.set_trace()
         # check input dimensions match
         if bottom[0].count != bottom[1].count:
             raise Exception("Inputs must have the same dimension.")

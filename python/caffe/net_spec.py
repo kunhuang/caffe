@@ -37,8 +37,10 @@ def param_name_dict():
     # strip the final '_param' or 'Parameter'
     param_names = [s[:-len('_param')] for s in param_names]
     param_type_names = [s[:-len('Parameter')] for s in param_type_names]
-    return dict(zip(param_type_names, param_names))
-
+    result = dict(zip(param_type_names, param_names))
+    # convolution param is re-used in deconvolution layer
+    result['Deconvolution'] = 'convolution'
+    return result
 
 def to_proto(*tops):
     """Generate a NetParameter that contains all layers needed to compute
@@ -61,9 +63,6 @@ def assign_proto(proto, name, val):
     lists; e.g., `my_repeated_int_field=3` is converted to
     `my_repeated_int_field=[3]`."""
 
-    import pdb
-    #if name=='stride':
-    #    pdb.set_trace()
     is_repeated_field = hasattr(getattr(proto, name), 'extend')
     if is_repeated_field and not isinstance(val, list):
         val = [val]
