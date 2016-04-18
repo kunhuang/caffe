@@ -11,6 +11,7 @@ class AlaskaLossLayer(caffe.Layer):
         num_L = 3
         w = h = 2
 
+        np.append(L, np.ones((n,1)), axis=1)
         # Except background
         L = np.asarray([[0, 0, 1], [0, 1, 1]])
         S = np.asarray([[[[0.1, 0.1], [0.9, 0.1]], [[0.1, 0.1], [0.1, 0.9]], [[0.1, 0.1], [0.9, 0.1]]], [[[0.1, 0.1], [0.9, 0.1]], [[0.1, 0.1], [0.9, 0.1]], [[0.1, 0.1], [0.9, 0.1]]]])
@@ -59,7 +60,6 @@ class AlaskaLossLayer(caffe.Layer):
             bottom[2]:L, (bool[n*(num_L-1)*1*1]), except the background
         '''
         # check input pair
-        pdb.set_trace()
         
         self.n, self.num_L, self.w, self.h = bottom[0].data.shape
 
@@ -68,9 +68,7 @@ class AlaskaLossLayer(caffe.Layer):
         if bottom[0].data.shape != bottom[1].data.shape:
             raise Exception("S and alpha should be same shape")
 
-
     def reshape(self, bottom, top):
-        pdb.set_trace()
         # check input dimensions match
         if bottom[0].count != bottom[1].count:
             raise Exception("Inputs must have the same dimension.")
@@ -80,22 +78,45 @@ class AlaskaLossLayer(caffe.Layer):
         top[0].reshape(1)
 
     def forward(self, bottom, top):
-        pdb.set_trace()
-        max_L = np.max(bottom[0].data, axis=[2,3])
-
-
-        self.diff[...] = bottom[0].data - bottom[1].data
+        # pdb.set_trace()
         
+        S, alpha, L = bottom[0].data, bottom[1].data, bottom[2].data
+        L = np.append(L, np.ones((self.n,1)), axis=1)
+        # Except background
+        
+        self.max_L = np.max(S.reshape(self.n, self.num_L, self.w*self.h), axis=2)
+        self.max_flatten_index = np.argmax(S.reshape(self.n, self.num_L, self.w*self.h), axis=2)
 
-        top[0].data[...] = np.sum(self.diff**2) / bottom[0].num / 2.
+        # Without background
+        self.true_L = np.argwhere(L[:,:-1]==1)
+        self.false_L = np.argwhere(L[:,:-1]==0)
+        # TODO, avoid overflow
+        true_sum = np.sum(np.log(0.000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]]))/len(self.true_L)
+        false_sum = np.sum(np.log(1.-self.max_L[[self.false_L[:,0],self.false_L[:,1]]]))/len(self.false_L)
+
+        # Elementwise multiplication
+        # TODO, avoid overflow
+        log_sum = np.sum(alpha*np.log(0.00001+S))/(self.num_L*self.w*self.h)
+
+        # self.top[0] = true_sum + false_sum + log_sum
+        top[0].data[...] = -(true_sum + false_sum + log_sum)
 
     def backward(self, top, propagate_down, bottom):
-        pdb.set_trace()
-        for i in range(2):
-            if not propagate_down[i]:
-                continue
-            if i == 0:
-                sign = 1
-            else:
-                sign = -1
-            bottom[i].diff[...] = sign * self.diff / bottom[i].num
+        # pdb.set_trace()
+
+        diff = self.diff.reshape(self.n, self.num_L, self.w*self.h)
+
+        d0, d1 = np.argwhere(self.max_flatten_index)[:,0], np.argwhere(self.max_flatten_index)[:,1]
+        true_max_diff = np.zeros_like(diff, dtype=np.float32)
+        # TODO, avoid overflow
+        true_max_diff[self.true_L[:,0], self.true_L[:,1], self.max_flatten_index[self.true_L[:,0], self.true_L[:,1]]] = 1./(0.000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]])
+        diff += -true_max_diff/len(self.true_L)
+
+        false_max_diff = np.zeros_like(diff, dtype=np.float32)
+        false_max_diff[self.false_L[:,0], self.false_L[:,1], self.max_flatten_index[self.false_L[:,0], self.false_L[:,1]]] = -1./(1.-self.max_L[[self.false_L[:,0],self.false_L[:,1]]])
+        diff += -false_max_diff/len(self.false_L)
+
+        #TODO, avoid flow
+        diff += -np.sum(np.divide(bottom[1].data, 0.000001+bottom[0].data))/(self.num_L*self.w*self.h)
+
+        self.diff = diff.reshape(self.n, self.num_L, self.w, self.h)
