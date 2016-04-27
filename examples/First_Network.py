@@ -1,13 +1,12 @@
-import sys 
-sys.path.remove('/usr/local/caffe/python')
-sys.path.append('/raid/yaq007/yaqNIPS/kcaffe/python')
+import sys
+# sys.path.remove('/usr/lib/python2.7/dist-packages/caffe/python')
+sys.path.insert(0, '/home/khuang-ms/kcaffe/python')
 
 import os
 import numpy as np
 import os.path as osp
 import matplotlib.pyplot as plt
 from copy import copy
-
 
 caffe_root = '../'  # this file is expected to be in {caffe_root}/examples
 sys.path.append(caffe_root + 'python')
@@ -21,19 +20,20 @@ sys.path.append("pycaffe") # the tools file is in this folder
 import tools #this contains some tools that we need
 
 # set data root & Model address & PASCAL classes
-pascal_root = osp.join(caffe_root, '../../caffe/data/VOC/VOCdevkit/VOC2012')
-MODEL_ADDRESS = '/raid/yaq007/yaqNIPS/caffe/models/VGG_ILSVRC_16_layers/VGG_ILSVRC_16_layers.caffemodel'
+pascal_root = osp.join(caffe_root, 'data/VOC/VOCdevkit/VOC2012')
+MODEL_ADDRESS = '../models/VGG_ILSVRC_16_layers/VGG_ILSVRC_16_layers.caffemodel'
 classes = np.asarray(['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'])
 
 # initialize caffe for gpu mode and use gpu 0 to run
 caffe.set_mode_gpu()
-caffe.set_device(0)
+caffe.set_device(3)
 
 # helper function for common structures
 def conv_relu(bottom, ks, nout, stride=1, pad=0, group=1):
     conv = L.Convolution(bottom, kernel_size=ks, stride=stride,
                                 num_output=nout, pad=pad, group=group)
     return conv, L.ReLU(conv, in_place=True)
+
 
 # another helper function
 def fc_relu(bottom, nout):
@@ -86,7 +86,7 @@ def caffenet_multilabel(data_layer_params, datalayer):
     
     return str(n.to_proto())
 
-workdir = './first_network_files'
+workdir = './first_network_files/'
 if not os.path.isdir(workdir):
     os.makedirs(workdir)
 
@@ -94,30 +94,30 @@ solverprototxt = tools.CaffeSolver(trainnet_prototxt_path = osp.join(workdir, "t
 # gamma: 0.1
 # momentum: 0.9
 # weight_decay: 0.0005
-solverprototxt.sp['test_iter'] = "364"
+solverprototxt.sp['test_iter'] = "184"
 solverprototxt.sp['test_interval'] = "200"
 solverprototxt.sp['base_lr'] = "1e-5"
 solverprototxt.sp['lr_policy'] = "\"" + "step" + "\""
 solverprototxt.sp['stepsize'] = "4000"
 solverprototxt.sp['display'] = "100"
 solverprototxt.sp['snapshot'] = "1000"
-solverprototxt.sp['snapshot_prefix'] = "\"" + caffe_root + "models/VGG_ILSVRC_16_layers/new_first_Network" + "\""
+solverprototxt.sp['snapshot_prefix'] = "\"" + caffe_root + "models/VGG_ILSVRC_16_layers/new_first_Network_32" + "\""
 solverprototxt.write(osp.join(workdir, 'solver.prototxt'))
 
 # write train net.
 with open(osp.join(workdir, 'trainnet.prototxt'), 'w') as f:
-    data_layer_params = dict(batch_size = 16, im_shape = [256, 256], crop_size = [224, 224], split = 'train', pascal_root = pascal_root)
+    data_layer_params = dict(batch_size = 32, im_shape = [256, 256], crop_size = [224, 224], split = 'train', pascal_root = pascal_root)
     f.write(caffenet_multilabel(data_layer_params, 'PascalMultilabelDataLayerSync'))
 
 # write validation net.
 with open(osp.join(workdir, 'valnet.prototxt'), 'w') as f:
-    data_layer_params = dict(batch_size = 16, im_shape = [256, 256], crop_size = [224, 224],split = 'val', pascal_root = pascal_root)
+    data_layer_params = dict(batch_size = 32, im_shape = [256, 256], crop_size = [224, 224],split = 'val', pascal_root = pascal_root)
     f.write(caffenet_multilabel(data_layer_params, 'PascalMultilabelDataLayerSync'))
 
 solver = caffe.SGDSolver(osp.join(workdir, 'solver.prototxt'))
 solver.net.copy_from(MODEL_ADDRESS)
 solver.test_nets[0].share_with(solver.net)
-solver.step(1)
+# solver.step(1)
 
 for itt in range(100):
     solver.step(100)

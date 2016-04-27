@@ -5,6 +5,34 @@ import pdb
 class AlaskaLossLayer(caffe.Layer):
     """
     """
+    def gradient_checker(self, bottom, top):
+        
+
+        pdb.set_trace()
+        
+        delta = 0.0000001
+        
+        loss = self._forward(bottom, top)
+        
+        bottom[0].data[0, 0, 0, 0] += delta
+        loss_ = self._forward(bottom, top)
+        bottom[0].data[0, 0, 0, 0] -= delta
+        numeric_gradient_0 = (loss_-loss)/delta
+        
+        bottom[0].data[0, 1, 0, 0] += delta
+        loss_ = self._forward(bottom, top)
+        bottom[0].data[0, 1, 0, 0] -= delta
+        numeric_gradient_1 = (loss_-loss)/delta
+
+        gradient = self._backward(top, None, bottom)
+        real_gradient_0 = gradient[0,0,0,0]
+        real_gradient_1 = gradient[0,1,0,0]
+        
+        print numeric_gradient_0, ' vs. ', real_gradient_0
+        print numeric_gradient_1, ' vs. ', real_gradient_1
+        
+        pdb.set_trace()
+        return True
 
     def test_forward():
         n = 2
@@ -77,9 +105,8 @@ class AlaskaLossLayer(caffe.Layer):
         # loss output is scalar
         top[0].reshape(1)
 
-    def forward(self, bottom, top):
+    def _forward(self, bottom, top):
         # pdb.set_trace()
-        
         S, alpha, L = bottom[0].data, bottom[1].data, bottom[2].data
         L = np.append(L, np.ones((self.n,1)), axis=1)
         # Except background
@@ -91,32 +118,44 @@ class AlaskaLossLayer(caffe.Layer):
         self.true_L = np.argwhere(L[:,:-1]==1)
         self.false_L = np.argwhere(L[:,:-1]==0)
         # TODO, avoid overflow
-        true_sum = np.sum(np.log(0.000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]]))/len(self.true_L)
+        true_sum = np.sum(np.log(0.0000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]]))/len(self.true_L)
         false_sum = np.sum(np.log(1.-self.max_L[[self.false_L[:,0],self.false_L[:,1]]]))/len(self.false_L)
 
         # Elementwise multiplication
         # TODO, avoid overflow
-        log_sum = np.sum(alpha*np.log(0.00001+S))/(self.num_L*self.w*self.h)
+        log_sum = np.sum(alpha*np.log(0.00000001+S))/(self.num_L*self.w*self.h)
 
-        # self.top[0] = true_sum + false_sum + log_sum
-        top[0].data[...] = -(true_sum + false_sum + log_sum)
+        return -(true_sum + false_sum + log_sum)/self.n
+    
+    def forward(self, bottom, top):
+        if self.gradient_checker(bottom, top) is False:
+            raise Exception('Gradient not correct')
+            
+        top[0].data[...] = self._forward(bottom, top)
 
-    def backward(self, top, propagate_down, bottom):
+    def _backward(self, top, propagate_down, bottom):
         # pdb.set_trace()
-
-        diff = self.diff.reshape(self.n, self.num_L, self.w*self.h)
+        diff = np.zeros((self.n, self.num_L, self.w*self.h), dtype=np.float32)
+        # diff = self.diff.reshape(self.n, self.num_L, self.w*self.h)
 
         d0, d1 = np.argwhere(self.max_flatten_index)[:,0], np.argwhere(self.max_flatten_index)[:,1]
         true_max_diff = np.zeros_like(diff, dtype=np.float32)
         # TODO, avoid overflow
-        true_max_diff[self.true_L[:,0], self.true_L[:,1], self.max_flatten_index[self.true_L[:,0], self.true_L[:,1]]] = 1./(0.000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]])
+        true_max_diff[self.true_L[:,0], self.true_L[:,1], self.max_flatten_index[self.true_L[:,0], self.true_L[:,1]]] = 1./(0.00000001+self.max_L[[self.true_L[:,0],self.true_L[:,1]]])
         diff += -true_max_diff/len(self.true_L)
 
         false_max_diff = np.zeros_like(diff, dtype=np.float32)
         false_max_diff[self.false_L[:,0], self.false_L[:,1], self.max_flatten_index[self.false_L[:,0], self.false_L[:,1]]] = -1./(1.-self.max_L[[self.false_L[:,0],self.false_L[:,1]]])
         diff += -false_max_diff/len(self.false_L)
 
-        #TODO, avoid flow
-        diff += -np.sum(np.divide(bottom[1].data, 0.000001+bottom[0].data))/(self.num_L*self.w*self.h)
+        # TODO, avoid flow
+        # diff += -np.sum(np.divide(bottom[1].data, 0.00000001+bottom[0].data))/(self.num_L*self.w*self.h)
+        
+        diff = diff.reshape(self.n, self.num_L, self.w, self.h)
+        diff += -np.divide(bottom[1].data, 0.00000001+bottom[0].data)/(self.num_L*self.w*self.h)
+        diff /= self.n
 
-        self.diff = diff.reshape(self.n, self.num_L, self.w, self.h)
+        return diff
+    
+    def backward(self, top, propagate_down, bottom):
+        self.diff = self._backward(top, propagate_down, bottom)
