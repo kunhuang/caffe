@@ -6,7 +6,7 @@ class AlaskaLossLayer(caffe.Layer):
     """
     """
     def gradient_checker(self, bottom, top):
-        
+        return True        
 
         pdb.set_trace()
         
@@ -32,7 +32,7 @@ class AlaskaLossLayer(caffe.Layer):
         print numeric_gradient_1, ' vs. ', real_gradient_1
         
         pdb.set_trace()
-        return True
+
 
     def test_forward():
         n = 2
@@ -105,9 +105,22 @@ class AlaskaLossLayer(caffe.Layer):
         # loss output is scalar
         top[0].reshape(1)
 
+    def max_alpha(self, alpha):
+        
+        max_indexs = np.equal(alpha,np.repeat(np.amax(alpha,axis=1).reshape(self.n,1,self.w,self.h), self.num_L, axis=1))
+        not_max_indexs = np.not_equal(alpha,np.repeat(np.amax(alpha,axis=1).reshape(self.n,1,self.w,self.h), self.num_L, axis=1))
+        
+        alpha[max_indexs] = 1.
+        alpha[not_max_indexs] = 0.
+
+        return alpha
+        pdb.set_trace()
+        
     def _forward(self, bottom, top):
         # pdb.set_trace()
         S, alpha, L = bottom[0].data, bottom[1].data, bottom[2].data
+        alpha = self.max_alpha(alpha)
+        
         L = np.append(L, np.ones((self.n,1)), axis=1)
         # Except background
         
@@ -125,7 +138,9 @@ class AlaskaLossLayer(caffe.Layer):
         # TODO, avoid overflow
         log_sum = np.sum(alpha*np.log(0.00000001+S))/(self.num_L*self.w*self.h)
 
-        return -(true_sum + false_sum + log_sum)/self.n
+        # return -(true_sum + false_sum + log_sum)/self.n
+        # ignore fisrt item
+        return -(log_sum)/self.n
     
     def forward(self, bottom, top):
         if self.gradient_checker(bottom, top) is False:
@@ -151,8 +166,12 @@ class AlaskaLossLayer(caffe.Layer):
         # TODO, avoid flow
         # diff += -np.sum(np.divide(bottom[1].data, 0.00000001+bottom[0].data))/(self.num_L*self.w*self.h)
         
+        # ignore first item
+        diff = np.zeros((self.n, self.num_L, self.w*self.h), dtype=np.float32)
         diff = diff.reshape(self.n, self.num_L, self.w, self.h)
-        diff += -np.divide(bottom[1].data, 0.00000001+bottom[0].data)/(self.num_L*self.w*self.h)
+        alpha = bottom[1].data
+        alpha = self.max_alpha(alpha)
+        diff += -np.divide(alpha, 0.00000001+bottom[0].data)/(self.num_L*self.w*self.h)
         diff /= self.n
 
         return diff

@@ -94,24 +94,24 @@ solverprototxt = tools.CaffeSolver(trainnet_prototxt_path = osp.join(workdir, "t
 # gamma: 0.1
 # momentum: 0.9
 # weight_decay: 0.0005
-solverprototxt.sp['test_iter'] = "184"
+solverprototxt.sp['test_iter'] = "37"
 solverprototxt.sp['test_interval'] = "200"
 solverprototxt.sp['base_lr'] = "1e-5"
 solverprototxt.sp['lr_policy'] = "\"" + "step" + "\""
-solverprototxt.sp['stepsize'] = "4000"
+solverprototxt.sp['stepsize'] = "2000"
 solverprototxt.sp['display'] = "100"
 solverprototxt.sp['snapshot'] = "1000"
-solverprototxt.sp['snapshot_prefix'] = "\"" + caffe_root + "models/VGG_ILSVRC_16_layers/new_first_Network_32" + "\""
+solverprototxt.sp['snapshot_prefix'] = "\"" + caffe_root + "models/VGG_ILSVRC_16_layers/new_first_Network_40_new_dataset" + "\""
 solverprototxt.write(osp.join(workdir, 'solver.prototxt'))
 
 # write train net.
 with open(osp.join(workdir, 'trainnet.prototxt'), 'w') as f:
-    data_layer_params = dict(batch_size = 32, im_shape = [256, 256], crop_size = [224, 224], split = 'train', pascal_root = pascal_root)
+    data_layer_params = dict(batch_size = 40, im_shape = [256, 256], crop_size = [224, 224], split = 'train', pascal_root = pascal_root)
     f.write(caffenet_multilabel(data_layer_params, 'PascalMultilabelDataLayerSync'))
 
 # write validation net.
 with open(osp.join(workdir, 'valnet.prototxt'), 'w') as f:
-    data_layer_params = dict(batch_size = 32, im_shape = [256, 256], crop_size = [224, 224],split = 'val', pascal_root = pascal_root)
+    data_layer_params = dict(batch_size = 40, im_shape = [256, 256], crop_size = [224, 224],split = 'val', pascal_root = pascal_root)
     f.write(caffenet_multilabel(data_layer_params, 'PascalMultilabelDataLayerSync'))
 
 solver = caffe.SGDSolver(osp.join(workdir, 'solver.prototxt'))
